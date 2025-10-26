@@ -84,8 +84,35 @@ public class GameManager : MonoBehaviour
 
     void TriggerScenario()
     {
-        //Debug.Log("A random financial scenario appears!");
-        uiManager.ShowScenarioPanel("You need to pay rent this week. What will you do?");
+        //uiManager.ShowScenarioPanel("You need to pay rent this week. What will you do?");
+        ScenarioData rentScenario = new ScenarioData
+        {
+            scenarioText = "You need to pay rent this week. What will you do?",
+            difficulty = ScenarioData.ScenarioDifficulty.Easy,
+            choices = new ScenarioChoice[]
+            {
+                new ScenarioChoice
+                {
+                    choiceText = "Pay full rent",
+                    moneyChange = -500f,
+                    outcomeText = "You paid your rent on time."
+                },
+                new ScenarioChoice
+                {
+                    choiceText = "Negotiate for partial rent",
+                    moneyChange = -250f,
+                    outcomeText = "You arranged to pay part of your rent. You will owe extra next month."
+                },
+                new ScenarioChoice
+                {
+                    choiceText = "Skip rent this month",
+                    moneyChange = 0f,
+                    outcomeText = "You avoided paying rent, but now owe extra next month."
+                }
+            }
+        };
+
+    uiManager.ShowScenarioPanel(rentScenario);
     }
 
     public void AdjustBalance(float amount)

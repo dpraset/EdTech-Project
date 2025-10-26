@@ -18,13 +18,14 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI scenarioText;
     public Button scenarioOption1;
     public Button scenarioOption2;
+    public Button scenarioOption3;
 
     // Jobs
     public Button findJobButton;
     public GameObject jobPanel;
     public Transform jobListContainer;
     public GameObject jobButtonPrefab;
-    public Button closeJobPanelButton;
+    //public Button closeJobPanelButton;
     public TextMeshProUGUI currentJobText;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -34,7 +35,9 @@ public class UIManager : MonoBehaviour
         nextButton.onClick.AddListener(() => gameManager.OnNextButtonPressed());
         scenarioPanel.SetActive(false);
         jobPanel.SetActive(false);
-        findJobButton.onClick.AddListener(() => gameManager.OpenJobPanel());
+        
+        // Toggle job panel on button click
+        findJobButton.onClick.AddListener(ToggleJobPanel);
     }
 
     // Update is called once per frame
@@ -54,29 +57,36 @@ public class UIManager : MonoBehaviour
         balanceText.text = $"Balance: ${balance:F2}";
     }
 
-    public void ShowScenarioPanel(string message)
+    public void ShowScenarioPanel(ScenarioData scenarioData)
     {
         scenarioPanel.SetActive(true);
-        scenarioText.text = message;
+        //scenarioText.text = message;
+        scenarioText.text = scenarioData.scenarioText;
 
         // Example options for now:
-        scenarioOption1.GetComponentInChildren<TextMeshProUGUI>().text = "Pay rent (-$500)";
-        scenarioOption2.GetComponentInChildren<TextMeshProUGUI>().text = "Delay payment";
+        scenarioOption1.GetComponentInChildren<TextMeshProUGUI>().text =
+        scenarioData.choices[0].choiceText;
+
+        scenarioOption2.GetComponentInChildren<TextMeshProUGUI>().text =
+            scenarioData.choices[1].choiceText;
+
+        scenarioOption3.GetComponentInChildren<TextMeshProUGUI>().text =
+            scenarioData.choices[2].choiceText;
 
         scenarioOption1.onClick.RemoveAllListeners();
         scenarioOption2.onClick.RemoveAllListeners();
+        scenarioOption3.onClick.RemoveAllListeners();
 
-        scenarioOption1.onClick.AddListener(() =>
-        {
-            gameManager.AdjustBalance(-500);
-            HideScenarioPanel();
-        });
+        scenarioOption1.onClick.AddListener(() => HandleScenarioChoice(scenarioData.choices[0]));
+        scenarioOption2.onClick.AddListener(() => HandleScenarioChoice(scenarioData.choices[1]));
+        scenarioOption3.onClick.AddListener(() => HandleScenarioChoice(scenarioData.choices[2]));
+    }
 
-        scenarioOption2.onClick.AddListener(() =>
-        {
-            Debug.Log("You chose to delay rent payment!");
-            HideScenarioPanel();
-        });
+    void HandleScenarioChoice(ScenarioChoice choice)
+    {
+        gameManager.AdjustBalance(choice.moneyChange);
+        Debug.Log(choice.outcomeText);
+        HideScenarioPanel();
     }
 
     public void HideScenarioPanel()
@@ -106,13 +116,22 @@ public class UIManager : MonoBehaviour
                 jobPanel.SetActive(false);
                 Debug.Log("You chose the " + job.jobName + " job.");
             });
-        }
+        }        
+    }
 
-        closeJobPanelButton.onClick.RemoveAllListeners();
-        closeJobPanelButton.onClick.AddListener(() =>
+    void ToggleJobPanel()
+    {
+        bool isActive = jobPanel.activeSelf;
+        if (!isActive)
         {
+            // Open the job panel
+            gameManager.OpenJobPanel();
+        }
+        else
+        {
+            // Close the panel
             jobPanel.SetActive(false);
-        });
+        }
     }
 
     public void UpdateCurrentJob(Job job)
