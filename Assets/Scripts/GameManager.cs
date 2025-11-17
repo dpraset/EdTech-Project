@@ -8,38 +8,40 @@ public class GameManager : MonoBehaviour
 {
     public UIManager uiManager;
     public FinanceManager financeManager;
+    public ConceptProgressionManager progressionManager;
+    public ConceptsPanelManager conceptsPanelManager; // NEW
 
     // Starting money
     public float playerBalance = 1000f;
     public int day = 1;
-    public bool isDay = true;
 
     public float totalEarnings;
     public float totalExpenses;
     
-    // Scenario logic
-    // Show a scenario every week
+    // Scenario tracking
     public int daysUntilScenario = 7; 
     private int daysPassed = 0;
+    public int completedScenariosCount = 0;
 
     // Income
-    //public float dailyIncome = 150f;
     public List<Job> availableJobs = new List<Job>();
     public Job currentJob;
     private int daysSinceLastPay = 0;
 
-    bool overtimeBonusActive = false;
-    float overtimeBonusAmount = 0f;
-
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        Debug.Log("Game started. Day 1, Morning.");
-        uiManager.UpdateDayText(day, isDay);
+        Debug.Log("Game started. Day 1.");
+        uiManager.UpdateDayText(day);
         uiManager.UpdateBalance(playerBalance);
 
         if (financeManager == null)
             financeManager = GetComponent<FinanceManager>();
+            
+        if (progressionManager == null)
+            progressionManager = GetComponent<ConceptProgressionManager>();
+            
+        if (conceptsPanelManager == null)
+            conceptsPanelManager = FindObjectOfType<ConceptsPanelManager>();
         
         // Jobs List
         availableJobs.Add(new Job("Barista (Part-Time)", 80f, PaySchedule.Daily, true, "Serve coffee."));
@@ -49,49 +51,38 @@ public class GameManager : MonoBehaviour
         // Default - No job
         currentJob = null;
         uiManager.UpdateCurrentJob(null);
-        //Debug.Log("Current Job: " + currentJob.jobName);
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
         
+        // Check for initial unlocks (Day 1)
+        if (progressionManager != null)
+            progressionManager.CheckUnlocks(day);
     }
 
     public void OnNextButtonPressed()
     {
-        if (isDay)
+        // Go directly to next day (no night cycle)
+        day++;
+        daysPassed++;
+        daysSinceLastPay++;
+        
+        uiManager.UpdateDayText(day);
+        ProcessPaycheck();
+
+        Debug.Log($"Day {day}");
+        financeManager.ProcessDailyExpenses(day);
+        
+        // Check for concept unlocks each day
+        if (progressionManager != null)
+            progressionManager.CheckUnlocks(day);
+
+        // Check if it's time to show a scenario
+        if (daysPassed >= daysUntilScenario)
         {
-            // Transition from Day to Night
-            isDay = false;
-            uiManager.UpdateDayText(day, isDay);
-            //uiManager.ShowFeedback("Night " + day);
-
-            Debug.Log("Evening to Day " + day);
+            daysPassed = 0;
+            TriggerScenario();
         }
-        else
-        {
-            // Transition from Night to Next Day
-            isDay = true;
-            day++;
-            daysPassed++;
-            daysSinceLastPay++;
-            uiManager.UpdateDayText(day, isDay);
-            ProcessPaycheck();
-
-            //uiManager.ShowFeedback("Day " + day + " - Start!");
-            Debug.Log("Day " + day);
-            financeManager.ProcessDailyExpenses(day);
-
-            // Check if it’s time to show a scenario
-            if (daysPassed >= daysUntilScenario)
-            {
-                daysPassed = 0;
-                TriggerScenario();
-            }
-            // Check for game over condition
-            CheckGameOver();
-        }
+        
+        // Check for game over condition
+        CheckGameOver();
     }
 
     void TriggerScenario()
@@ -102,12 +93,8 @@ public class GameManager : MonoBehaviour
 
     ScenarioData GetRandomScenario()
     {
-
-        // List of financial scenarios
         List<ScenarioData> scenarios = new List<ScenarioData>
         {
-            
-            // Scenario 1: Night out
             new ScenarioData
             {
                 scenarioText = "Your friends invite you for a night out. What will you do?",
@@ -116,27 +103,25 @@ public class GameManager : MonoBehaviour
                 {
                     new ScenarioChoice
                     {
-                        choiceText = "Go out and splurge",
+                        choiceText = "Go out and enjoy",
                         moneyChange = -200f,
-                        outcomeText = "You went out and splurged your money, resulting in $200 in costs the next day."
+                        outcomeText = "You went out, spending $200."
                     },
                     new ScenarioChoice
                     {
                         choiceText = "Go out but spend wisely",
                         moneyChange = -40f,
-                        outcomeText = "You had a good time with your friends, and only spent $40 on food and drinks."
+                        outcomeText = "You had fun with friends and set a budget beforehand."
                     },
                     new ScenarioChoice
                     {
                         choiceText = "Politely decline",
                         moneyChange = 0f,
-                        outcomeText = "You decided to decline and stay at home."
+                        outcomeText = "You declined and stayed home."
                     }
                 }
             },
             
-            
-            // Scenario 2: Friend Asks to Borrow Money
             new ScenarioData
             {
                 scenarioText = "Your friend needs to borrow $100. They promise to pay back.",
@@ -147,81 +132,183 @@ public class GameManager : MonoBehaviour
                     {
                         choiceText = "Lend the money",
                         moneyChange = -100f,
-                        outcomeText = "You lent your friend money. There's a chance you won't get it back."
+                        outcomeText = "You lent $100. Hope they pay you back!"
                     },
                     new ScenarioChoice
                     {
                         choiceText = "Say you can't afford it",
                         moneyChange = 0f,
-                        outcomeText = "Your friend is saddened by your response and leaves."
+                        outcomeText = "You refused to lend money to your friend."
                     },
                     new ScenarioChoice
                     {
-                        choiceText = "Offer $50 instead",
+                        choiceText = "Compromise with them",
                         moneyChange = -50f,
-                        outcomeText = "You compromised with them. Let's hope it was worth it!"
+                        outcomeText = "You compromised and lent $50."
                     }
                 }
             },
             
-            // Challenge 1: Impulse Purchase
             new ScenarioData
             {
-                scenarioText = "Challenge: You see the new gaming console on sale for $400. It's 20% off!",
+                scenarioText = "You see a new TV on sale for $400. It's 20% off!",
+                difficulty = ScenarioData.ScenarioDifficulty.Easy,
+                choices = new ScenarioChoice[]
+                {
+                    new ScenarioChoice
+                    {
+                        choiceText = "Buy it now!",
+                        moneyChange = -400f,
+                        outcomeText = "You bought it, though your wallet took a big hit."
+                    },
+                    new ScenarioChoice
+                    {
+                        choiceText = "Trade-in an older TV.",
+                        moneyChange = -200f,
+                        outcomeText = "You traded in an older TV for a newer one."
+                    },
+                    new ScenarioChoice
+                    {
+                        choiceText = "Wait for a better deal.",
+                        moneyChange = 0f,
+                        outcomeText = "You decide to wait for a better deal."
+                    }
+                }
+            },
+
+            new ScenarioData
+            {
+                scenarioText = "Your sink has a leak! This could lead to bigger problems in the future.",
                 difficulty = ScenarioData.ScenarioDifficulty.Medium,
                 choices = new ScenarioChoice[]
                 {
                     new ScenarioChoice
                     {
-                        choiceText = "Buy it now! (Impulse)",
+                        choiceText = "Try to repair it yourself.",
+                        moneyChange = -40f,
+                        outcomeText = "You did some DIY repairs, stopping the issue, for now."
+                    },
+                    new ScenarioChoice
+                    {
+                        choiceText = "Call for a handyman.",
+                        moneyChange = -100f,
+                        outcomeText = "The handyman fixed your sink without any further issues."
+                    },
+                    new ScenarioChoice
+                    {
+                        choiceText = "Ignore the issue.",
                         moneyChange = -400f,
-                        outcomeText = "Bought it, but the budget was impacted."
+                        outcomeText = "The leak got worse, and lead to a burst pipe! You have to get it replaced now."
+                    }
+                }
+            },
+
+            new ScenarioData
+            {
+                scenarioText = "A student asks you, 'Which of these is considered a 'fixed' expense?'",
+                difficulty = ScenarioData.ScenarioDifficulty.Easy,
+                choices = new ScenarioChoice[]
+                {
+                    new ScenarioChoice
+                    {
+                        choiceText = "Groceries!",
+                        moneyChange = 0f,
+                        outcomeText = "Groceries are not a fixed expense. The student is sad and walks away."
                     },
                     new ScenarioChoice
                     {
-                        choiceText = "Wait and save up",
+                        choiceText = "Gas",
                         moneyChange = 0f,
-                        outcomeText = ""
+                        outcomeText = "Gas prices are not actually a fixed expense. The student is sad and walks away."
                     },
                     new ScenarioChoice
                     {
-                        choiceText = "Check your budget first",
+                        choiceText = "Rent",
+                        moneyChange = 20f,
+                        outcomeText = "Rent is a fixed expense. The student is happy and gives you $20."
+                    }
+                }
+            },
+
+            new ScenarioData
+            {
+                scenarioText = "<b>FINANCIAL CHALLENGE</b> Your car suddenly breaks down and requires urgent repairs.",
+                difficulty = ScenarioData.ScenarioDifficulty.Hard,
+                choices = new ScenarioChoice[]
+                {
+                    new ScenarioChoice
+                    {
+                        choiceText = "Buy a new car",
+                        moneyChange = -40000f,
+                        outcomeText = "Bought it, but your budget took a hit."
+                    },
+                    new ScenarioChoice
+                    {
+                        choiceText = "Buy an old car",
+                        moneyChange = -25000f,
+                        outcomeText = "Smart! Delayed gratification prevents financial stress."
+                    },
+                    new ScenarioChoice
+                    {
+                        choiceText = "Repair the car",
+                        moneyChange = -800f,
+                        outcomeText = "Good thinking! Always budget for wants."
+                    }
+                }
+            },
+
+            new ScenarioData
+            {
+                scenarioText = "There's a large retailer that has recently dropped in stock price. Shares are $80 each.",
+                difficulty = ScenarioData.ScenarioDifficulty.Medium,
+                choices = new ScenarioChoice[]
+                {
+                    new ScenarioChoice
+                    {
+                        choiceText = "Buy 25 shares!",
+                        moneyChange = -2000f,
+                        outcomeText = "Bought it, but your budget took a hit."
+                    },
+                    new ScenarioChoice
+                    {
+                        choiceText = "Buy 10 shares",
+                        moneyChange = -800f,
+                        outcomeText = "Smart! Delayed gratification prevents financial stress."
+                    },
+                    new ScenarioChoice
+                    {
+                        choiceText = "Ignore",
                         moneyChange = 0f,
-                        outcomeText = ""
+                        outcomeText = "Good thinking! Always budget for wants."
                     }
                 }
             }
         };
         
-        // Return a random scenario
         return scenarios[Random.Range(0, scenarios.Count)];
     }
-
-        
 
     public void AdjustBalance(float amount)
     {
         playerBalance += amount;
         uiManager.UpdateBalance(playerBalance);
+        
+        // Check balance-based unlocks
+        if (progressionManager != null)
+            progressionManager.CheckUnlocks(day);
     }
-
-    
-    /**void ProcessWork()
-    {
-        if (isDay)
-        {
-            Debug.Log("You worked your day shift!");
-            AdjustBalance(dailyIncome);
-        }
-        else
-        {
-            Debug.Log("You chose to rest tonight.");
-        }
-    } **/
 
     public void OpenJobPanel()
     {
         uiManager.ShowJobSelection(availableJobs);
+    }
+    
+    public void OpenConceptsPanel()
+    {
+        if (conceptsPanelManager != null)
+        {
+            conceptsPanelManager.OpenConceptsPanel();
+        }
     }
 
     void ProcessPaycheck()
@@ -250,23 +337,25 @@ public class GameManager : MonoBehaviour
             AdjustBalance(currentJob.payAmount);
             financeManager.RecordIncome(day, currentJob.jobName, currentJob.payAmount);
             daysSinceLastPay = 0;
-            uiManager.ShowFeedback($"Day " + day + " - " + currentJob.jobName + " - Earned $" + currentJob.payAmount);
+            uiManager.ShowFeedback($"Day {day} - {currentJob.jobName} - Earned ${currentJob.payAmount}");
             Debug.Log($"Day {day}: Received ${currentJob.payAmount} from {currentJob.jobName}");
         }
     }
 
     void CheckGameOver()
     {
-        // Game over if balance is negative for too long or below critical threshold
         if (playerBalance < -100f)
         {
             Debug.LogError("GAME OVER: Debt too high!");
             uiManager.ShowGameOver("You accumulated too much debt and couldn't recover.");
         }
     }
-
-    void PauseBackground()
+    
+    public void OnScenarioCompleted()
     {
-        // pause bakground menu while other menu (scenario, challenge, pause) is active
+        completedScenariosCount++;
+        
+        if (progressionManager != null)
+            progressionManager.CheckUnlocks(day);
     }
 }

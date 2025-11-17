@@ -39,6 +39,10 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI budgetStatusText;
     public Button toggleBudgetButton;
 
+    [Header("Concepts UI")]
+    public GameObject conceptsPanel;
+    public Button toggleConceptsButton;
+
     [Header("Game Over UI")]
     public GameObject gameOverPanel;
     public TextMeshProUGUI gameOverText;
@@ -57,6 +61,9 @@ public class UIManager : MonoBehaviour
             
         if (budgetPanel != null)
             budgetPanel.SetActive(false);
+
+        if (conceptsPanel != null)
+            conceptsPanel.SetActive(false);
             
         if (gameOverPanel != null)
             gameOverPanel.SetActive(false);
@@ -64,6 +71,7 @@ public class UIManager : MonoBehaviour
         // Toggle panels on button click
         findJobButton.onClick.AddListener(ToggleJobPanel);
         toggleBudgetButton.onClick.AddListener(ToggleBudgetPanel);
+        toggleConceptsButton.onClick.AddListener(ToggleConceptsPanel);
     }
 
     // Update is called once per frame
@@ -72,10 +80,10 @@ public class UIManager : MonoBehaviour
         
     }
 
-    public void UpdateDayText(int day, bool isDay)
+    public void UpdateDayText(int day)
     {
-        string timeOfDay = isDay ? "Daytime" : "Nighttime";
-        dayText.text = $"Day {day} - {timeOfDay}";
+        //string timeOfDay = isDay ? "Daytime" : "Nighttime";
+        dayText.text = $"Day {day}";
     }
 
     public void UpdateBalance(float balance)
@@ -236,6 +244,24 @@ public class UIManager : MonoBehaviour
                     UnityEngine.SceneManagement.SceneManager.GetActiveScene().name
                 );
             });
+        }
+    }
+
+    // Concepts
+    void ToggleConceptsPanel()
+    {
+        bool isActive = conceptsPanel.activeSelf;
+        if (!isActive)
+        {
+            // Open the concepts panel
+            gameManager.OpenConceptsPanel();
+            feedbackPanel.SetActive(false);
+        }
+        else
+        {
+            // Close the panel
+            conceptsPanel.SetActive(false);
+            feedbackPanel.SetActive(true);
         }
     }
 
