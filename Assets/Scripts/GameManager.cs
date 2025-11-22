@@ -232,7 +232,8 @@ public class GameManager : MonoBehaviour
 
             new ScenarioData
             {
-                scenarioText = "<b>FINANCIAL CHALLENGE</b> Your car suddenly breaks down and requires urgent repairs.",
+                scenarioText = "<b>FINANCIAL CHALLENGE</b>\n" + 
+                "Your car suddenly breaks down and requires urgent repairs.",
                 difficulty = ScenarioData.ScenarioDifficulty.Hard,
                 choices = new ScenarioChoice[]
                 {
